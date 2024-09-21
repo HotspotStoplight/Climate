@@ -7,11 +7,9 @@ from data_utils.new_train_and_eval import train_and_evaluate_classifier
 from data_utils.make_data_to_classify import make_non_flooding_data
 from data_utils.pygeoboundaries import get_adm_ee
 from data_utils.filter_emdat import filter_data_from_gcs
-from data_utils.exposure_and_vulnerability import make_vulnerability_data
 from google.cloud import storage
 import ee
 
-import pretty_errors  # for pretty printing of error messages
 
 cloud_project = "hotspotstoplight"
 
@@ -38,7 +36,7 @@ def process_flood_data(place_name):
     ]
 
     # Define Google Cloud Storage bucket name and fileNamePrefix
-    bucket_name = f"hotspotstoplight_floodmapping"
+    bucket_name = "hotspotstoplight_floodmapping"
     directory_name = f"data/{snake_case_place_name}/inputs/"
 
     # Initialize Google Cloud Storage client and create the new directory
@@ -59,7 +57,9 @@ def process_flood_data(place_name):
     print("Training and assessing model...")
 
     # Capture the entire return value as a single variable
-    result = train_and_evaluate_classifier(image_collection, bbox, bucket_name, snake_case_place_name)
+    result = train_and_evaluate_classifier(
+        image_collection, bbox, bucket_name, snake_case_place_name
+    )
     if result is None:
         print("Training and evaluation failed outright. Exiting...")
         return
@@ -79,7 +79,6 @@ def process_flood_data(place_name):
 
     # Continue with the rest of your process if both are not None
     print("Both inputProperties and training have valid data.")
-
 
     ### make final image to classify probability, write results---------------------------------------------------------------
 

@@ -1,6 +1,4 @@
-import time
 import ee
-from google.cloud import storage
 
 
 def start_export_task(geotiff, description, bucket, fileNamePrefix, scale):

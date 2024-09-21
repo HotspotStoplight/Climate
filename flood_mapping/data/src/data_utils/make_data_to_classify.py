@@ -1,10 +1,7 @@
-from datetime import datetime, timedelta
 import ee
-from google.cloud import storage
 
 
 def make_non_flooding_data(bbox):
-
     dem = ee.Image("WWF/HydroSHEDS/03VFDEM").clip(bbox)
     slope = ee.Terrain.slope(dem)
     landcover = ee.Image("ESA/WorldCover/v100/2020").select("Map").clip(bbox)

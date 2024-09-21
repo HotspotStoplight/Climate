@@ -2,6 +2,7 @@ from google.cloud import storage
 import pandas as pd
 import io
 
+
 def filter_data_from_gcs(country_name):
     """
     Pulls data from an Excel file in a Google Cloud Storage bucket,
@@ -34,7 +35,7 @@ def filter_data_from_gcs(country_name):
     ].copy()  # Ensure this is a copy to avoid SettingWithCopyWarning
 
     # Process start and end dates
-    for date_type in ['Start', 'End']:
+    for date_type in ["Start", "End"]:
         year_col = f"{date_type} Year"
         month_col = f"{date_type} Month"
         day_col = f"{date_type} Day"
@@ -45,8 +46,10 @@ def filter_data_from_gcs(country_name):
             {
                 "year": filtered_data[year_col],
                 "month": filtered_data[month_col],
-                "day": filtered_data[day_col]
-            }, errors='coerce')
+                "day": filtered_data[day_col],
+            },
+            errors="coerce",
+        )
 
         # Detect rows where dates could not be parsed and print them
         invalid_rows = filtered_data[combined_dates.isna()]
@@ -58,12 +61,14 @@ def filter_data_from_gcs(country_name):
         filtered_data.loc[:, date_col] = combined_dates  # Use .loc to avoid warnings
 
     # Filter out rows where either start_date or end_date are NaT
-    valid_data = filtered_data.dropna(subset=['start_date', 'end_date'])
+    valid_data = filtered_data.dropna(subset=["start_date", "end_date"])
 
     # Create date pairs as a list of tuples
     date_pairs = [
         (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
-        for start_date, end_date in zip(valid_data['start_date'], valid_data['end_date'])
+        for start_date, end_date in zip(
+            valid_data["start_date"], valid_data["end_date"]
+        )
     ]
 
     return date_pairs
