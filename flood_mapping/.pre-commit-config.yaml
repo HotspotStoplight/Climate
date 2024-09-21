@@ -1,14 +1,26 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: stable
+  # Python hooks
+  - repo: local
     hooks:
-      - id: black
-        language_version: python3
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.8.0  # Use the latest version or another version that suits your needs
-    hooks:
-      - id: isort
-        name: isort (Python import sort)
+      # Ruff for Python linting
+      - id: ruff
+        name: ruff (Python linting)
+        entry: ruff check --fix
         language: python
-        types: [python]  # This ensures isort runs only on Python files
+        types_or: [python, pyi, jupyter]
+        files: \.py$
+
+      # Ruff for Python formatting
+      - id: ruff-format
+        name: ruff-format (Python formatting)
+        entry: ruff format
+        language: python
+        types_or: [python, pyi, jupyter]
+        files: \.py$
+
+      # Dependency checks for Python
+      - id: check-python-dependencies
+        name: Check Python dependencies
+        entry: bash -c 'pipenv check --bare --quiet || (echo "Python dependencies check failed" && exit 1)'
+        language: system
+        files: ^Pipfile$
