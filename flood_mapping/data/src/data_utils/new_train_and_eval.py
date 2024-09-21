@@ -1,12 +1,9 @@
 import ee
 from google.cloud import storage
-import csv
-from io import StringIO
 import numpy as np
 from collections import Counter
 import json
 
-from data_utils.monitor_tasks import monitor_tasks
 
 # Initialize the Earth Engine
 ee.Initialize()

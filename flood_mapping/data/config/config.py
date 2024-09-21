@@ -1,6 +1,4 @@
-import os
 import ee
-from google.cloud import storage
 
 cloud_project = "hotspotstoplight"
 

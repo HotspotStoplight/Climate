@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 import ee
-from google.cloud import storage
 
 
 def make_training_data(bbox, start_date, end_date):
-
     # Convert the dates to datetime objects
     start_date = start_date
     end_date = end_date
@@ -126,16 +124,24 @@ def make_training_data(bbox, start_date, end_date):
     # Load and filter Sentinel-1 GRD data by predefined parameters
     # Define helper function to check collection size
     def check_collection_size(pass_dir):
-        collection = ee.ImageCollection("COPERNICUS/S1_GRD") \
-            .filter(ee.Filter.eq("instrumentMode", "IW")) \
-            .filter(ee.Filter.listContains("transmitterReceiverPolarisation", polarization)) \
-            .filter(ee.Filter.eq("orbitProperties_pass", pass_dir)) \
-            .filter(ee.Filter.eq("resolution_meters", 10)) \
-            .filterBounds(bbox) \
+        collection = (
+            ee.ImageCollection("COPERNICUS/S1_GRD")
+            .filter(ee.Filter.eq("instrumentMode", "IW"))
+            .filter(
+                ee.Filter.listContains("transmitterReceiverPolarisation", polarization)
+            )
+            .filter(ee.Filter.eq("orbitProperties_pass", pass_dir))
+            .filter(ee.Filter.eq("resolution_meters", 10))
+            .filterBounds(bbox)
             .select(polarization)
+        )
 
-        pre_collection_size = collection.filterDate(before_start, before_end).size().getInfo()
-        post_collection_size = collection.filterDate(after_start, after_end).size().getInfo()
+        pre_collection_size = (
+            collection.filterDate(before_start, before_end).size().getInfo()
+        )
+        post_collection_size = (
+            collection.filterDate(after_start, after_end).size().getInfo()
+        )
 
         return pre_collection_size > 0 and post_collection_size > 0, collection
 
