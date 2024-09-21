@@ -2,44 +2,27 @@
 
 Follow these steps to set up the project environment:
 
-## 1. Install pipx
-Follow the instructions at https://github.com/pypa/pipx to install pipx.
+## 1. Install `pipenv`
+Follow the instructions at https://pipenv.pypa.io/en/latest/installation.html to install `pipenv`. 
 
 ## 2. Install pyenv
 Follow the instructions at https://github.com/pyenv/pyenv to install pyenv.
 
-## 3. Install Poetry
-Visit https://python-poetry.org/docs/ for instructions on installing Poetry.
-
-## 4. Clone the GitHub Repository
+## 3. Clone the GitHub Repository
 Clone the git repository to your local machine by running the following command in your command line interface (CLI):
 
 `git clone https://github.com/HotspotStoplight/Climate`
 
-## 5. Install a local copy of Python
+## 4. Install a local copy of Python
 For this project, you'll need Python 3.9. Navigate to `/Climate/flood_mapping` and run `pyenv install 3.9.1`. You may need to set the local version of Python by also running `pyenv local 3.9.1`.
 
-## 6. Install Dependencies with Poetry
-In your command line interface (CLI), navigate to the flood_mapping subdirectory with `cd Climate/flood_mapping` and then run `poetry install`.
+## 5. Install Dependencies with `pipenv`
+In your command line interface (CLI), navigate to the flood_mapping subdirectory with `cd Climate/flood_mapping` and then run `pipenv install`.
 
-
-## 7. Configure Poetry Virtual Environment
-Execute the following to create a virtual environment in the project directory:
-
-`poetry config virtualenvs.in-project true`
-
-## 8. Activate the Virtual Environment
+## 6. Activate the Virtual Environment
 Activate the virtual environment by running:
 
-`poetry shell`
-
-If using VS Code, you might need to specify the path to the virtual environment. Run the following command to get the path:
-
-`poetry env info --path`
-
-Copy the output path and paste it into VS Code's Python interpreter path setting. You should now be ready to run the scripts in VS Code.
-
-*Note: make sure to open the `/flood_mapping` subdirectory as your folder in VS Code (rather than the `Climate`) folder in order for VS Code to recognize your Python environment.
+`pipenv shell`
 
 ## Setting User Credentials for Google Cloud
 
@@ -50,7 +33,7 @@ Follow the instructions to [install the gcloud CLI](https://cloud.google.com/sdk
 Then run `gcloud auth application-default login` to authenticate.
 
 ## Running the Flood Prediction Script
-To run the script, navigate to the `flood_mapping` directory and activate the virtual environment with `poetry shell`. Then, run the main script with. This is done with `python data/src/script.py` follow by a list of countries, e.g.,
+To run the script, navigate to the `flood_mapping` directory and activate the virtual environment with `pipenv shell`. Then, run the main script with. This is done with `python data/src/script.py` follow by a list of countries, e.g.,
 
 ```
 python3 data/src/script.py Uruguay "El Salvador" Brazil
