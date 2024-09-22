@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  lint-and-type-check:
+  lint-type-check-docker-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,3 +38,10 @@ jobs:
         run: |
           mypy .
         continue-on-error: true
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker container
+        run: |
+          docker compose build --parallel
