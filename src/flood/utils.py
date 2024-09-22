@@ -19,6 +19,7 @@ from src.constants.constants import (
     FLOOD_INPUT_PROPERTIES,
     FLOOD_INPUTS_PATH,
     FLOOD_OUTPUTS_PATH,
+    FLOOD_MODEL_LOG_PATH,
     FLOOD_SCALE,
     LANDCOVER_SCALE,
 )
@@ -29,6 +30,7 @@ from src.utils.utils import (
     export_predictions,
     initialize_storage_client,
     monitor_tasks,
+    append_model_tracking_info_to_csv,
 )
 
 load_dotenv()
@@ -734,7 +736,23 @@ def read_images_into_collection(GOOGLE_CLOUD_BUCKET, prefix):
     return image_collection
 
 
-def process_all_flood_data():
+def process_all_flood_data(bucket: storage.Bucket) -> None:
+    """
+    Processes flood data for all training countries, trains a classifier, and tracks the model.
+
+    Steps include:
+    1. Check if the model already exists in Earth Engine and skip if it does.
+    2. Read and combine image collections from all countries in the training data.
+    3. Train and evaluate the flood model on the combined data.
+    4. Export the trained model to an Earth Engine asset.
+    5. Track the model's metadata in a CSV file stored in GCS.
+
+    Args:
+        bucket (storage.Bucket): The Google Cloud Storage bucket used to store data.
+
+    Returns:
+        None
+    """
     if ee.data.getInfo(FLOOD_MODEL_ASSET_ID):
         print(
             f"Model already exists at {FLOOD_MODEL_ASSET_ID}. Skipping training and evaluation."
@@ -771,8 +789,7 @@ def process_all_flood_data():
 
     print("Training and assessing model on combined data...")
 
-    bbox = get_area_of_interest(TRAINING_DATA_COUNTRIES)
-
+    # Train and evaluate classifier
     prob_classifier, test_accuracy, validation_accuracy = train_and_evaluate_classifier(
         combined_image_collection, bbox, GOOGLE_CLOUD_BUCKET, "combined_model"
     )
@@ -780,7 +797,19 @@ def process_all_flood_data():
         print("Training and evaluation failed outright. Exiting...")
         return
 
-    def export_model_as_ee_asset(classifier, asset_id):
+    def export_model_as_ee_asset(
+        classifier: ee.Classifier, asset_id: str
+    ) -> ee.batch.Task:
+        """
+        Exports a trained classifier to an Earth Engine asset.
+
+        Args:
+            classifier (ee.Classifier): The trained classifier to export.
+            asset_id (str): The Earth Engine asset ID where the classifier will be stored.
+
+        Returns:
+            ee.batch.Task: The export task that handles the export process.
+        """
         task = ee.batch.Export.classifier.toAsset(
             classifier=classifier,
             assetId=asset_id,
@@ -789,8 +818,23 @@ def process_all_flood_data():
         print(f"Exporting trained flood model with GEE ID {asset_id}.")
         return task
 
+    # Export the trained model to an Earth Engine asset
     task = export_model_as_ee_asset(prob_classifier, FLOOD_MODEL_ASSET_ID)
     monitor_tasks([task], 60)
+
+    # Model tracking information (without sample distribution or evaluation result)
+    sample_size = combined_image_collection.size().getInfo()
+
+    # Append model tracking info to CSV using FLOOD_MODEL_LOG_PATH
+    append_model_tracking_info_to_csv(
+        model_asset_id=FLOOD_MODEL_ASSET_ID,
+        training_countries=TRAINING_DATA_COUNTRIES,
+        input_properties=FLOOD_INPUT_PROPERTIES,
+        sample_size=sample_size,
+        model_type="flood",
+        bucket=bucket,  # Pass the bucket object
+        tracking_csv_path=FLOOD_MODEL_LOG_PATH,  # Use the flood-specific log path
+    )
 
     print("Process completed successfully.")
 
@@ -928,7 +972,7 @@ def predict(place_name: str) -> None:
 
     bucket = initialize_storage_client(GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET)
     task = export_predictions(
-        classified_image, place_name, bucket, base_directory, FLOOD_SCALE
+        classified_image, "flood", place_name, bucket, base_directory, FLOOD_SCALE
     )
 
     monitor_tasks([task], 600)

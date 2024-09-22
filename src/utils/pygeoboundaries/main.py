@@ -1,31 +1,35 @@
-from typing import List, Union
-
+from typing import List, Union, Optional
 import ee
 import geojson
 import requests
 from fuzzywuzzy import process
 from requests_cache import CachedSession
-
 from src.utils.pygeoboundaries import countries_iso_dict, iso_codes
 
 
 class SessionManager:
-    def __init__(self):
-        self._session = None
+    """Manages an HTTP session with optional caching."""
 
-    def get_session(self):
+    def __init__(self):
+        self._session: Optional[requests.Session] = None
+
+    def get_session(self) -> requests.Session:
+        """Returns a cached session or creates a new one if not already created."""
         if self._session is None:
-            self._session = CachedSession(expire_after=604800)  # Default to 1 week
+            self._session = CachedSession(expire_after=604800)  # 1 week
         return self._session
 
-    def clear_cache(self):
-        if self._session:
+    def clear_cache(self) -> None:
+        """Clears the cache if a cached session is in use."""
+        if self._session and isinstance(self._session, CachedSession):
             self._session.cache.clear()
 
-    def set_cache_expire_time(self, seconds: int):
+    def set_cache_expire_time(self, seconds: int) -> None:
+        """Sets the cache expiration time for the session."""
         self._session = CachedSession(expire_after=seconds)
 
-    def disable_cache(self):
+    def disable_cache(self) -> None:
+        """Disables caching by using a regular session."""
         self._session = requests.Session()
 
 
@@ -33,7 +37,8 @@ class SessionManager:
 session_manager = SessionManager()
 
 
-def _is_valid_adm(iso3, adm: str) -> bool:
+def _is_valid_adm(iso3: str, adm: str) -> bool:
+    """Checks if a given ADM level is valid for a specific ISO3 code."""
     session = session_manager.get_session()
     html = session.get(
         f"https://www.geoboundaries.org/api/current/gbOpen/{iso3}/", verify=True
@@ -42,6 +47,7 @@ def _is_valid_adm(iso3, adm: str) -> bool:
 
 
 def _validate_adm(adm: Union[str, int]) -> str:
+    """Validates and converts an ADM level to a standard format."""
     if isinstance(adm, int) or len(str(adm)) == 1:
         adm = "ADM" + str(adm)
     if str.upper(adm) in [f"ADM{i}" for i in range(6)] or str.upper(adm) == "ALL":
@@ -49,7 +55,8 @@ def _validate_adm(adm: Union[str, int]) -> str:
     raise KeyError("Invalid ADM level provided.")
 
 
-def _get_smallest_adm(iso3):
+def _get_smallest_adm(iso3: str) -> str:
+    """Finds the smallest ADM level available for a given ISO3 code."""
     current_adm = 5
     while current_adm >= 0:
         if _is_valid_adm(iso3, f"ADM{current_adm}"):
@@ -60,32 +67,30 @@ def _get_smallest_adm(iso3):
 
 
 def _is_valid_iso3_code(territory: str) -> bool:
+    """Checks if a given string is a valid ISO3 code."""
     return str.lower(territory) in iso_codes.iso_codes
 
 
 def _get_iso3_from_name_or_iso2(name: str) -> str:
+    """Attempts to get an ISO3 code from a country name or ISO2 code using fuzzy matching."""
     name_lower = str.lower(name)
 
-    # Try to get a direct match first
     if name_lower in countries_iso_dict.countries_iso3:
         return str.upper(countries_iso_dict.countries_iso3[name_lower])
 
-    # If no direct match, use fuzzy matching to find the closest key
     closest_match, match_score = process.extractOne(
         name_lower, countries_iso_dict.countries_iso3.keys()
     )
 
-    # Set a threshold for the match score to consider it a valid match
-    # You might need to adjust this based on your testing
-    if match_score >= 80:  # Assuming a threshold of 80%
+    if match_score >= 80:
         return str.upper(countries_iso_dict.countries_iso3[closest_match])
 
-    # If no match found, log the issue and raise an exception
     print(f"Failed to find a close match for '{name}'")
     raise KeyError(f"Couldn't find country named '{name}'")
 
 
 def _generate_url(territory: str, adm: Union[str, int]) -> str:
+    """Generates a URL for geoboundaries API based on territory and ADM level."""
     iso3 = (
         str.upper(territory)
         if _is_valid_iso3_code(territory)
@@ -103,14 +108,16 @@ def _generate_url(territory: str, adm: Union[str, int]) -> str:
 
 
 def get_metadata(territory: str, adm: Union[str, int]) -> dict:
+    """Fetches metadata for a given territory and ADM level."""
     session = session_manager.get_session()
     url = _generate_url(territory, adm)
     response = session.get(url, verify=True)
-    response.raise_for_status()  # Raises error for bad responses
+    response.raise_for_status()
     return response.json()
 
 
-def _get_data(territory: str, adm: str, simplified: bool) -> dict:
+def _get_data(territory: str, adm: Union[str, int], simplified: bool) -> str:
+    """Retrieves GeoJSON data for a given territory and ADM level."""
     geom_complexity = "simplifiedGeometryGeoJSON" if simplified else "gjDownloadURL"
     try:
         json_uri = get_metadata(territory, adm)[geom_complexity]
@@ -128,6 +135,7 @@ def _get_data(territory: str, adm: str, simplified: bool) -> dict:
 def get_adm(
     territories: Union[str, List[str]], adm: Union[str, int], simplified=True
 ) -> dict:
+    """Fetches administrative boundaries (ADM) for a list of territories."""
     if isinstance(territories, str):
         territories = [territories]
     geojson_features = [
@@ -137,24 +145,20 @@ def get_adm(
         "type": "FeatureCollection",
         "features": [
             feature["features"][0] for feature in geojson_features
-        ],  # Assuming each call returns a FeatureCollection with one feature
+        ],
     }
     return feature_collection
 
 
 def get_adm_ee(
     territories: Union[str, List[str]], adm: Union[str, int], simplified=True
-):
-    # Use the original get_adm function to get the GeoJSON FeatureCollection
+) -> ee.FeatureCollection:
+    """Fetches administrative boundaries (ADM) for a list of territories and converts them to an Earth Engine FeatureCollection."""
     geojson_feature_collection = get_adm(territories, adm, simplified)
-
-    # Convert the GeoJSON FeatureCollection dict to an Earth Engine FeatureCollection
     ee_feature_collection = ee.FeatureCollection(geojson_feature_collection["features"])
-
     return ee_feature_collection
 
 
-# function to get area of interest for a place name-------------------------------------------------------
-def get_area_of_interest(place_name):
-    """Retrieve the area of interest based on the place name."""
+def get_area_of_interest(place_name: str) -> ee.Geometry:
+    """Retrieves the area of interest for a given place name."""
     return get_adm_ee(territories=place_name, adm="ADM0").geometry().bounds()
