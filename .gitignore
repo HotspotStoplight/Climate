@@ -1,3 +1,6 @@
+# ruff cache
+.ruff_cache
+
 # http_cache
 http_cache.sqlite
 
