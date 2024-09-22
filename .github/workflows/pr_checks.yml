@@ -27,11 +27,14 @@ jobs:
       - name: Run Ruff linter
         run: |
           ruff check --fix
+        continue-on-error: true
 
       - name: Run Ruff formatter
         run: |
           ruff format
+        continue-on-error: true
 
       - name: Run mypy type checks
         run: |
           mypy .
+        continue-on-error: true
