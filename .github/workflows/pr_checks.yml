@@ -38,3 +38,10 @@ jobs:
         run: |
           mypy .
         continue-on-error: true
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker container
+        run: |
+          docker-compose build --parallel
