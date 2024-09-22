@@ -1,0 +1,17 @@
+services:
+
+  formatter:
+    build:
+      context: .
+    volumes:
+      - ./src:/usr/src/app
+    command: sh -c "pip install ruff && ruff format"
+    network_mode: 'host'
+
+  linter:
+    build:
+      context: .
+    volumes:
+      - ./src:/usr/src/app
+    command: sh -c "pip install ruff && ruff check --fix"
+    network_mode: 'host'
