@@ -7,12 +7,14 @@ WORKDIR /usr/src/app
 # Install Pipenv
 RUN pip install pipenv
 
-# Copy the Pipfile and Pipfile.lock from the src directory
+# Copy the Pipfile and Pipfile.lock into the container
 COPY Pipfile Pipfile.lock ./
 
 # Install the dependencies from Pipfile
 RUN pipenv install --deploy --ignore-pipfile
 
-# Use Pipenv to run the script
-# Adjust the path to your main Python script if needed
-CMD ["pipenv", "run", "python", "./flood.py"]
+# Copy the rest of the project files into the container
+COPY . .
+
+# Set bash as the default command, allowing interactive access
+CMD ["bash"]

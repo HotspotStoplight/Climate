@@ -1,5 +1,5 @@
+version: '3'
 services:
-
   formatter:
     build:
       context: .
@@ -14,4 +14,13 @@ services:
     volumes:
       - ./src:/usr/src/app
     command: sh -c "pip install ruff && ruff check --fix"
+    network_mode: 'host'
+
+  climate:
+    build:
+      context: .
+    volumes:
+      - ./src:/usr/src/app
+    stdin_open: true  # Allows interactive input
+    tty: true  # Allocates a pseudo-TTY for bash
     network_mode: 'host'
