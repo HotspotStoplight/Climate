@@ -1,25 +1,17 @@
 import ee
-import geemap
 from data_utils.monitor_tasks import monitor_tasks
 from data_utils.pygeoboundaries import get_adm_ee
 from data_utils.export_and_monitor import start_export_task
-from data_utils.scaling_factors import apply_scale_factors
-from data_utils.cloud_mask import cloud_mask
 from data_utils.export_ndvi import export_ndvi_min_max
 from data_utils.download_ndvi import download_ndvi_data_for_year
 from data_utils.process_annual_data import process_year
 from data_utils.process_data_to_classify import process_data_to_classify
 from google.cloud import storage
 from datetime import datetime
-import csv
-from io import StringIO
 from collections import Counter
-
-import pretty_errors
 
 
 def process_heat_data(place_name):
-
     cloud_project = "hotspotstoplight"
     ee.Initialize(project=cloud_project)
 
@@ -35,7 +27,7 @@ def process_heat_data(place_name):
     aoi = get_adm_ee(territories=place_name, adm="ADM0")
     bbox = aoi.geometry().bounds()
 
-    bucket_name = f"hotspotstoplight_heatmapping"
+    bucket_name = "hotspotstoplight_heatmapping"
     directory_name = f"data/{snake_case_place_name}/inputs/"
 
     storage_client = storage.Client(project=cloud_project)
@@ -50,7 +42,6 @@ def process_heat_data(place_name):
     gcs_bucket = bucket_name
 
     def process_for_year(year, cloud_project, bucket_name, snake_case_place_name):
-
         ndvi_min, ndvi_max = download_ndvi_data_for_year(
             year, cloud_project, bucket_name, snake_case_place_name
         )
@@ -83,8 +74,6 @@ def process_heat_data(place_name):
     image_collections = image_collections.map(convert_landcover_to_int)
 
     print("Image collections", image_collections.first().getInfo())
-
-    from collections import Counter
 
     # Sample the land cover values
     sample = (

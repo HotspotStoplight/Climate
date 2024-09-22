@@ -16,8 +16,8 @@ def filter_data_from_gcs(country_name):
     - A list of tuples with the start and end dates for the filtered rows
     """
 
-    bucket_name = f"hotspotstoplight_floodmapping"
-    file_name = f"data/emdat/public_emdat_custom_request_2024-02-10_39ba89ea-de1d-4020-9b8e-027db50a5ded.xlsx"
+    bucket_name = "hotspotstoplight_floodmapping"
+    file_name = "data/emdat/public_emdat_custom_request_2024-02-10_39ba89ea-de1d-4020-9b8e-027db50a5ded.xlsx"
 
     # Initialize a client and get the bucket and blob
     client = storage.Client()

@@ -1,6 +1,5 @@
 from data_utils.make_training_data import make_training_data
 from data_utils.export_and_monitor import start_export_task
-from data_utils.monitor_tasks import monitor_tasks
 import ee
 from google.cloud import storage
 import re
