@@ -6,10 +6,10 @@ HEAT_MODEL_ASSET_ID = "projects/hotspotstoplight/assets/heat-model-00"
 FLOOD_MODEL_ASSET_ID = "projects/hotspotstoplight/assets/flood-model-00"
 """The storage location of the current flood model asset in GEE. Update the number at the end of the asset ID as you iterate through models."""
 
-TRAINING_DATA_COUNTRIES = ["Costa Rica", "Netherlands", "Ghana", "Kenya"]
+TRAINING_DATA_COUNTRIES = ["Kenya"]
 """The countries that will be used to train the models."""
 
-EMDAT_DATA_PATH = "emdat/public_emdat_2024-06-24.xlsx"
+EMDAT_DATA_PATH = "emdat/emdat_public_emdat_2024-06-24.xlsx"
 """The path in GCS where you have stored the downloaded EMDAT data. These are used to identify known flood dates for the flood module."""
 
 

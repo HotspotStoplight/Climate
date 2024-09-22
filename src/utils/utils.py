@@ -5,6 +5,11 @@ import time
 import ee
 from dotenv import load_dotenv
 from google.cloud import storage
+from google.cloud.storage import Bucket
+
+import csv
+from datetime import datetime, timezone
+from typing import List, Optional
 
 from src.utils.pygeoboundaries.main import get_area_of_interest
 
@@ -17,20 +22,25 @@ ee.Initialize(project=GOOGLE_CLOUD_PROJECT)
 
 
 # function to initialize google cloud storage connection-------------------------------------------------------
-def initialize_storage_client(project: str, GOOGLE_CLOUD_BUCKET: str) -> Bucket:
+def initialize_storage_client(project: Optional[str], GOOGLE_CLOUD_BUCKET: Optional[str]) -> Bucket:
     """
     Initialize the Google Cloud Storage client and return the storage bucket.
 
     Args:
-        project (str): The Google Cloud project ID.
-        GOOGLE_CLOUD_BUCKET (str): The name of the Google Cloud Storage bucket.
+        project (Optional[str]): The Google Cloud project ID.
+        GOOGLE_CLOUD_BUCKET (Optional[str]): The name of the Google Cloud Storage bucket.
 
     Returns:
         Bucket: A Google Cloud Storage bucket object.
     """
+    if project is None or GOOGLE_CLOUD_BUCKET is None:
+        raise ValueError("Project ID and bucket name must be provided and cannot be None.")
+    
     storage_client = storage.Client(project=project)
     bucket = storage_client.bucket(GOOGLE_CLOUD_BUCKET)
     return bucket
+
+
 
 
 bucket = initialize_storage_client(GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET)
@@ -44,13 +54,13 @@ def make_snake_case(place_name):
 # functions to start and monitor ee export tasks-------------------------------------------------------
 
 
-def start_export_task(geotiff, description, bucket, fileNamePrefix, scale):
+def start_export_task(geotiff, description, bucket, file_name_prefix, scale):
     print(f"Starting export: {description}")
     task = ee.batch.Export.image.toCloudStorage(
         image=geotiff,
         description=description,
         bucket=bucket,
-        fileNamePrefix=fileNamePrefix,
+        fileNamePrefix=file_name_prefix,
         scale=scale,
         maxPixels=1e13,
         fileFormat="GeoTIFF",
@@ -103,11 +113,11 @@ def monitor_tasks(tasks, sleep_interval=10):
 
 
 def check_and_export_geotiffs_to_bucket(
-    bucket_name, fileNamePrefix, flood_dates, bbox, scale=90
+    bucket_name, file_name_prefix, dates, bbox, scale=90
 ):
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
-    existing_files = list(bucket.list_blobs(prefix=fileNamePrefix))
+    existing_files = list(bucket.list_blobs(prefix=file_name_prefix))
     existing_dates = [
         extract_date_from_filename(file.name)
         for file in existing_files
@@ -116,7 +126,7 @@ def check_and_export_geotiffs_to_bucket(
 
     tasks = []
 
-    for index, (start_date, end_date) in enumerate(flood_dates):
+    for index, (start_date, end_date) in enumerate(dates):
         if start_date.strftime("%Y-%m-%d") in existing_dates:
             print(f"Skipping {start_date}: data already exist")
             continue
@@ -129,14 +139,14 @@ def check_and_export_geotiffs_to_bucket(
             continue
 
         geotiff = training_data_result.toShort()
-        specificFileNamePrefix = f"{fileNamePrefix}input_data_{start_date}"
+        specific_file_name_prefix = f"{file_name_prefix}input_data_{start_date}"
         export_description = f"input_data_{start_date}"
 
         print(
-            f"Initiating export for GeoTIFF {index + 1} of {len(flood_dates)}: {export_description}"
+            f"Initiating export for GeoTIFF {index + 1} of {len(dates)}: {export_description}"
         )
         task = start_export_task(
-            geotiff, export_description, bucket_name, specificFileNamePrefix, scale
+            geotiff, export_description, bucket_name, specific_file_name_prefix, scale
         )
         tasks.append(task)
 
@@ -146,9 +156,7 @@ def check_and_export_geotiffs_to_bucket(
     else:
         print("No exports were initiated.")
 
-    print(
-        f"Finished checking and exporting GeoTIFFs. Processed {len(flood_dates)} flood events."
-    )
+    print(f"Finished checking and exporting GeoTIFFs. Processed {len(dates)} events.")
 
 
 # function to check if a file or files exist before proceeding-------------------------------------------------------
@@ -267,19 +275,31 @@ def classify_image(
 
 # function to make predcitions-------------------------------------------------------
 def predict(
-    place_name,
-    predicted_image_filename,
-    bucket,
-    directory_name,
-    scale,
+    place_name: str,
+    model_type: str,  # Added to specify the type of model (e.g., 'flood', 'heat')
+    predicted_image_filename: str,
+    bucket: Bucket,
+    directory_name: str,
+    scale: float,
     process_data_to_classify,
-    input_properties,
-    model_asset_id,
-):
-    """Main function to predict risk for a given place and export the result."""
+    input_properties: List[str],
+    model_asset_id: str,
+) -> None:
+    """
+    Main function to predict risk for a given place and export the result.
 
+    Args:
+        place_name (str): The name of the place for the prediction.
+        model_type (str): The type of model, e.g., 'flood', 'heat'.
+        predicted_image_filename (str): The filename for the exported prediction.
+        bucket (Bucket): The Google Cloud Storage bucket where the predictions will be uploaded.
+        directory_name (str): The directory name in the bucket where the predictions will be stored.
+        scale (float): The scale to be used for the export.
+        process_data_to_classify: The function to prepare data for classification.
+        input_properties (List[str]): A list of input properties (bands) used for classification.
+        model_asset_id (str): The asset ID of the pre-trained model to use for classification.
+    """
     snake_case_place_name = make_snake_case(place_name)
-
     base_directory = f"{directory_name}{snake_case_place_name}/"
 
     # Check if predictions data already exists
@@ -296,63 +316,21 @@ def predict(
 
     # Export predictions
     task = export_predictions(
-        classified_image, predicted_image_filename, bucket, base_directory, scale
+        classified_image, place_name, model_type, bucket, base_directory, scale
     )
 
     # Monitor the export task
     monitor_tasks([task], 600)
 
 
-# def process_flood_data_to_classify(bbox):
-#     """Prepare the data to be classified for flood risk."""
-#     landcover = ee.Image("ESA/WorldCover/v100/2020").select("Map").clip(bbox)
-#     dem = (
-#         ee.ImageCollection("projects/sat-io/open-datasets/FABDEM")
-#         .mosaic()
-#         .clip(bbox)
-#     )
-
-#     image_to_classify = (
-#         landcover.rename("landcover")
-#         .addBands(dem.rename("elevation"))
-#         .addBands(ee.Image.pixelLonLat())
-#     )
-
-#     return image_to_classify
-
-# def process_heat_data_to_classify(bbox):
-#     """Prepare the data to be classified for heat risk."""
-#     # Add appropriate processing steps for heat data
-#     pass  # Replace with actual implementation
-
-# # Example usage for flood prediction
-# predict(
-#     place_name="Example Place",
-#     predicted_image_filename="predicted_flood_risk_example_place",
-#     bucket=initialize_storage_client(GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET),
-#     directory_name=FLOOD_OUTPUTS_PATH,
-#     scale=FLOOD_SCALE,
-#     process_data_to_classify=process_flood_data_to_classify,
-#     input_properties=FLOOD_INPUT_PROPERTIES,
-#     model_asset_id=FLOOD_MODEL_ASSET_ID
-# )
-
-# # Example usage for heat prediction
-# predict(
-#     place_name="Example Place",
-#     predicted_image_filename="predicted_heat_risk_example_place",
-#     bucket=initialize_storage_client(GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET),
-#     directory_name=HEAT_OUTPUTS_PATH,
-#     scale=HEAT_SCALE,
-#     process_data_to_classify=process_heat_data_to_classify,
-#     input_properties=HEAT_INPUT_PROPERTIES,
-#     model_asset_id=HEAT_MODEL_ASSET_ID
-# )
-
-
 # function to export predictions-------------------------------------------------------
 def export_predictions(
-    classified_image, place_name: str, bucket: Bucket, directory_name: str, scale: float
+    classified_image,
+    place_name: str,
+    model_type: str,  # Added to specify the type of model (e.g., 'flood', 'heat')
+    bucket: Bucket,
+    directory_name: str,
+    scale: float,
 ) -> object:
     """
     Export the predictions to Google Cloud Storage.
@@ -360,6 +338,7 @@ def export_predictions(
     Args:
         classified_image: The image to be exported.
         place_name (str): The name of the place for which predictions are being exported.
+        model_type (str): The type of model, e.g., 'flood', 'heat'.
         bucket (Bucket): The Google Cloud Storage bucket where the predictions will be uploaded.
         directory_name (str): The directory name in the bucket where the predictions will be stored.
         scale (float): The scale to be used for the export.
@@ -367,19 +346,92 @@ def export_predictions(
     Returns:
         object: The export task object.
     """
-    snake_case_place_name: str = place_name.replace(" ", "_").lower()
-    predicted_image_filename: str = f"predicted_flood_risk_{snake_case_place_name}"
-
-    blob = bucket.blob(directory_name)
-    blob.upload_from_string(
-        "", content_type="application/x-www-form-urlencoded;charset=UTF-8"
+    snake_case_place_name: str = make_snake_case(place_name)
+    predicted_image_filename: str = (
+        f"predicted_{model_type}_risk_{snake_case_place_name}"
     )
+
+    # Adjusted to use `model_type` in the description
+    export_description = f"{place_name} predicted {model_type} risk"
+
+    # Corrected to include the filename in the directory path
+    full_path = f"{directory_name}{predicted_image_filename}"
 
     task = start_export_task(
         classified_image,
-        f"{place_name} predicted flood risk",
+        export_description,
         bucket.name,
-        directory_name + predicted_image_filename,
+        full_path,
         scale,
     )
     return task
+
+from typing import List
+from google.cloud import storage
+from datetime import datetime, timezone
+import csv
+
+def append_model_tracking_info_to_csv(
+    model_asset_id: str,
+    training_countries: List[str],
+    input_properties: List[str],
+    sample_size: int,
+    model_type: str,
+    bucket: storage.Bucket,
+    tracking_csv_path: str,
+) -> None:
+    """
+    Appends model training information to a CSV file in GCS for tracking purposes.
+    This function omits sample distribution and evaluation results, which will be tracked later.
+
+    Args:
+        model_asset_id (str): The ID of the model asset.
+        training_countries (List[str]): The countries used to generate training data.
+        input_properties (List[str]): The properties used as model inputs.
+        sample_size (int): The size of the training sample.
+        model_type (str): The type of model (e.g., 'flood', 'heat', etc.).
+        bucket (storage.Bucket): The GCS bucket object to interact with.
+        tracking_csv_path (str): The path where the CSV will be saved.
+
+    Returns:
+        None
+    """
+    blob = bucket.blob(tracking_csv_path)
+
+    # Download current CSV if it exists, otherwise create a new one.
+    try:
+        csv_data = blob.download_as_text()
+        rows = list(csv.reader(csv_data.splitlines()))
+    except Exception:
+        # If the CSV doesn't exist yet, create a header.
+        rows = [
+            [
+                "Date",
+                "Model Type",
+                "Model Asset ID",
+                "Training Countries",
+                "Input Properties",
+                "Sample Size",
+            ]
+        ]
+
+    # Prepare the new row with training details
+    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    new_row = [
+        current_date,
+        model_type,
+        model_asset_id,
+        "; ".join(training_countries),
+        "; ".join(input_properties),
+        str(sample_size),  # Convert sample_size to a string
+    ]
+
+    rows.append(list(map(str, new_row)))  # Ensure all items in new_row are strings
+
+    # Upload updated CSV
+    csv_output = "\n".join([",".join(map(str, row)) for row in rows])
+    blob.upload_from_string(csv_output, content_type="text/csv")
+
+    print(
+        f"Model tracking info for {model_type} appended to {tracking_csv_path} in GCS."
+    )

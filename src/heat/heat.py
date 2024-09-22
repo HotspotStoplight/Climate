@@ -22,8 +22,6 @@ def main(place_name: str) -> None:
     Args:
         place_name (str): The name of the place to generate heat hazard predictions for.
     """
-    make_training_data()
-    train_and_evaluate()
 
     print(f"Predicting for {place_name}...")
 
@@ -42,8 +40,13 @@ def main(place_name: str) -> None:
 
     snake_case_place_name: str = make_snake_case(place_name)
 
+    make_training_data()
+
+    train_and_evaluate(bucket)
+
     predict(
         place_name,
+        "heat",
         f"predicted_heat_hazard_{snake_case_place_name}",
         bucket,
         HEAT_OUTPUTS_PATH,

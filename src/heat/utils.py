@@ -12,6 +12,7 @@ from src.constants.constants import (
     HEAT_INPUT_PROPERTIES,
     HEAT_INPUTS_PATH,
     HEAT_OUTPUTS_PATH,
+    HEAT_MODEL_LOG_PATH,
     HEAT_SCALE,
 )
 from src.utils.pygeoboundaries.main import get_area_of_interest
@@ -23,7 +24,12 @@ from src.utils.utils import (
     make_snake_case,
     monitor_tasks,
     read_images_into_collection,
+    append_model_tracking_info_to_csv,
 )
+
+
+from typing import Dict, Any
+from google.cloud import storage
 
 # Load environment variables
 load_dotenv()
@@ -195,7 +201,7 @@ def process_heat_data(place_name):
         if task is not None:
             ndvi_tasks.append(task)
 
-    monitor_tasks(ndvi_tasks, 30)
+    monitor_tasks(ndvi_tasks, 120)
 
     image_list = []
     tasks = []
@@ -219,7 +225,7 @@ def process_heat_data(place_name):
         tasks.append(task)
         print(f"Exporting heat data for {place_name} for the year {year} to GCS...")
 
-    monitor_tasks(tasks, 60)
+    monitor_tasks(tasks, 240)
 
 
 def make_training_data():
@@ -249,7 +255,25 @@ def generate_heat_tif_list(training_data_countries):
     return all_tif_list
 
 
-def train_and_evaluate():
+def train_and_evaluate(bucket: storage.Bucket) -> None:
+    """
+    Trains and evaluates a heat risk model based on image data, and logs the model details.
+
+    Steps:
+    1. Check if the model already exists and skip if it does.
+    2. Read image data from Google Cloud Storage (GCS) and prepare it for training.
+    3. Sample land cover values from the data.
+    4. Train a random forest regression model to predict median land surface temperature (LST).
+    5. Evaluate the trained model on recent image data.
+    6. Export the trained model and evaluation results to GCS.
+    7. Track model details (model asset ID, countries, input properties, sample size) in a CSV.
+
+    Args:
+        bucket (storage.Bucket): The Google Cloud Storage bucket used for storing data.
+
+    Returns:
+        None
+    """
     if ee.data.getInfo(HEAT_MODEL_ASSET_ID):
         print(
             f"Model already exists at {HEAT_MODEL_ASSET_ID}. Skipping training and evaluation."
@@ -309,6 +333,7 @@ def train_and_evaluate():
         print("Error: Failed to generate a class histogram.")
         raise ValueError("Failed to generate a class histogram.")
 
+    # Adjust the sample sizes for certain classes
     half_total_samples = total_samples // 5
     if 50 in class_histogram:
         class_histogram[50] = half_total_samples
@@ -332,7 +357,16 @@ def train_and_evaluate():
     n_images = image_collections.size().getInfo()
     samples_per_image = total_samples // n_images
 
-    def stratified_sample_per_image(image):
+    def stratified_sample_per_image(image: ee.Image) -> ee.FeatureCollection:
+        """
+        Performs stratified sampling of the image based on landcover classes.
+
+        Args:
+            image (ee.Image): The image to sample.
+
+        Returns:
+            ee.FeatureCollection: A collection of stratified samples.
+        """
         stratified_sample = image.stratifiedSample(
             numPoints=samples_per_image,
             classBand=class_band,
@@ -384,9 +418,22 @@ def train_and_evaluate():
     )
     output_path = f"{HEAT_OUTPUTS_PATH}{HEAT_MODEL_ASSET_ID}/rmse_results"
 
-    def export_results_to_cloud_storage(result, result_type, output_path):
+    def export_results_to_cloud_storage(
+        result: Dict[str, Any], result_type: str, output_path: str
+    ) -> ee.batch.Task:
+        """
+        Exports results to Google Cloud Storage.
+
+        Args:
+            result (Dict[str, Any]): The result data to export.
+            result_type (str): The type of result (e.g., "RMSE").
+            output_path (str): The path in GCS where the result will be saved.
+
+        Returns:
+            ee.batch.Task: The export task that handles the export process.
+        """
         task = ee.batch.Export.table.toCloudStorage(
-            collection=ee.FeatureCollection([result]),
+            collection=ee.FeatureCollection([ee.Feature(None, result)]),
             description=f"Export {result_type} results",
             bucket=GOOGLE_CLOUD_BUCKET,
             fileNamePrefix=output_path,
@@ -398,19 +445,34 @@ def train_and_evaluate():
         )
         return task
 
-    task = export_results_to_cloud_storage(mean_squared_error, "RMSE", output_path)
-    monitor_tasks([task], 30)
+    task = export_results_to_cloud_storage(
+        mean_squared_error.getInfo(), "RMSE", output_path
+    )
+    monitor_tasks([task], 240)
 
     print("Exported RMSE results to cloud storage.")
 
     task = export_model_as_ee_asset(
         regressor, "heat_risk_prediction", HEAT_MODEL_ASSET_ID
     )
-    monitor_tasks([task], 30)
+    monitor_tasks([task], 240)
 
     print(
         f"Exported trained model to an Earth Engine asset with ID {HEAT_MODEL_ASSET_ID}."
     )
+
+    # Append model tracking info to CSV using HEAT_MODEL_LOG_PATH
+    append_model_tracking_info_to_csv(
+        model_asset_id=HEAT_MODEL_ASSET_ID,
+        training_countries=TRAINING_DATA_COUNTRIES,
+        input_properties=HEAT_INPUT_PROPERTIES,
+        sample_size=total_samples,
+        model_type="heat",
+        bucket=bucket,  # Pass the bucket object
+        tracking_csv_path=HEAT_MODEL_LOG_PATH,  # Use the heat-specific log path
+    )
+
+    print("Model tracking completed successfully.")
 
 
 def process_data_to_classify(bbox):

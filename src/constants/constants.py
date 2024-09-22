@@ -4,6 +4,7 @@ HEAT_SCALE = 90
 HEAT_INPUT_PROPERTIES = ["longitude", "latitude", "landcover", "elevation"]
 HEAT_OUTPUTS_PATH = "heat/outputs/"
 HEAT_INPUTS_PATH = "heat/inputs/"
+HEAT_MODEL_LOG_PATH = "model_tracking/heat_model_log.csv"
 
 FLOOD_SCALE = 30
 FLOOD_INPUT_PROPERTIES = [
@@ -24,3 +25,4 @@ FLOOD_INPUT_PROPERTIES = [
 ]
 FLOOD_OUTPUTS_PATH = "flood/ouputs/"
 FLOOD_INPUTS_PATH = "flood/inputs/"
+FLOOD_MODEL_LOG_PATH = "model_tracking/flood_model_log.csv"
