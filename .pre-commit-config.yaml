@@ -9,7 +9,6 @@ repos:
         language: python
         types_or: [python, pyi, jupyter]
         files: \.py$
-        exclude: ^data/src/awkde/
 
       # Ruff for Python formatting
       - id: ruff-format
@@ -18,11 +17,18 @@ repos:
         language: python
         types_or: [python, pyi, jupyter]
         files: \.py$
-        exclude: ^data/src/awkde/
+
+      # Mypy for Python type checks
+      - id: mypy
+        name: mypy (Python typing)
+        entry: mypy .
+        language: python
+        types_or: [python, pyi]
+        files: \.py$
 
       # Dependency checks for Python
       - id: check-python-dependencies
         name: Check Python dependencies
-        entry: bash -c 'cd data/src && pipenv check --bare --quiet || (echo "Python dependencies check failed" && exit 1)'
+        entry: bash -c 'pipenv check --bare --quiet || (echo "Python dependencies check failed" && exit 1)'
         language: system
-        files: ^data/src/Pipfile$
+        files: ^Pipfile$
