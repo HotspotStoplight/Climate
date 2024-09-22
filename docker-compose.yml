@@ -1,10 +1,9 @@
-version: '3'
 services:
   formatter:
     build:
       context: .
     volumes:
-      - ./src:/usr/src/app
+      - ./:/usr/src/app
     command: sh -c "pip install ruff && ruff format"
     network_mode: 'host'
 
@@ -12,7 +11,7 @@ services:
     build:
       context: .
     volumes:
-      - ./src:/usr/src/app
+      - ./:/usr/src/app
     command: sh -c "pip install ruff && ruff check --fix"
     network_mode: 'host'
 
@@ -20,7 +19,12 @@ services:
     build:
       context: .
     volumes:
-      - ./src:/usr/src/app
-    stdin_open: true  # Allows interactive input
-    tty: true  # Allocates a pseudo-TTY for bash
+      - ./:/usr/src/app
+      - ~/.config/gcloud/application_default_credentials.json:/usr/src/app/credentials/service-account-key.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/credentials/service-account-key.json
+    stdin_open: true
+    tty: true
     network_mode: 'host'
+    # Automatically run bash inside the pipenv environment
+    command: ["pipenv", "run", "bash"]
