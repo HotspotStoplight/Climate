@@ -1,7 +1,9 @@
+[tool.pylint]
+ignore = ["scratch/"]
+
 [tool.pylint.'MESSAGES CONTROL']
 disable = ["all"]
 enable = ["duplicate-code"]
-
 
 [tool.vulture]
 exclude = ["scratch/"]
