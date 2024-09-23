@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  lint-and-type-check:
+  lint-type-check-docker-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -44,4 +44,4 @@ jobs:
 
       - name: Build Docker container
         run: |
-          docker-compose build --parallel
+          docker compose build --parallel
