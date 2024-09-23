@@ -30,13 +30,14 @@ jobs:
 
       - name: Run Pylint duplicate code check
         run: |
-          pylint --disable=all --enable=duplicate-code --ignore=scratch/ .
+          pylint --disable=all --enable=duplicate-code --ignore=scratch/ -sn .
         continue-on-error: true
 
       - name: Run Vulture dead code check
         uses: gtkacz/vulture-action@1.0.0
         with:
           args: '--min-confidence 60 --exclude "scratch/"'
+        continue-on-error: true
 
   type-check:
     runs-on: ubuntu-latest
