@@ -9,9 +9,7 @@ This project relies heavily on Google Earth Engine, so, before anything else, ma
 Next, clone this repository:
 
 ```
-
 git clone https://github.com/HotspotStoplight/Climate
-
 ```
 
 Create a `/credentials` subdirectory in the root of the repository. This will be ignored by Git. Download a service account key associated with the HotspotStoplight project, place it in the `/credentials` subdirectory, and name it `service-account-key.json`.
@@ -21,11 +19,9 @@ Create a `/credentials` subdirectory in the root of the repository. This will be
 3. Create a `.env` file in the `src/` directory with the following content:
 
    ```
-
    GOOGLE_CLOUD_PROJECT=your-project-name
    GOOGLE_CLOUD_BUCKET=your-bucket-name
    GOOGLE_APPLICATION_CREDENTIALS=credentials/service-account-key.json
-
    ```
 
 4. Enable the Google Earth Engine (GEE) API for your project and register for GEE usage.
@@ -46,9 +42,7 @@ For the flood module:
 This repository can be run in a Docker container. Assuming you have [Docker installed](https://docs.docker.com/engine/install/), navigate to the root directory of the repository and run:
 
 ```
-
 docker-compose build climate
-
 ```
 
 ### Running the Application
@@ -56,9 +50,7 @@ docker-compose build climate
 With the container built, run:
 
 ```
-
 docker-compose run climate
-
 ```
 
 This will open a bash terminal with the pipenv shell activated. You can then run relevant commands as if you were working locally.
@@ -66,18 +58,14 @@ This will open a bash terminal with the pipenv shell activated. You can then run
 To run the full script:
 
 ```
-
 python -m src.main [Country Name]
-
 ```
 
 Or run individual modules:
 
 ```
-
 python -m src.heat.heat [Country Name]
 python -m src.flood.flood [Country Name]
-
 ```
 
 ## Local Development
@@ -92,12 +80,10 @@ For local development, install the following tools:
 Once installed and the repo is cloned, navigate to the root directory, install Python 3.11, install dependencies, and activate the virtual environment:
 
 ```
-
 pyenv install 3.11
 pyenv local 3.11
 pipenv install
 pipenv shell
-
 ```
 
 ### Running the Application
@@ -107,24 +93,18 @@ To run the application outside of Docker:
 1. Activate the virtual environment:
 
    ```
-
    pipenv shell
-
    ```
 
 2. Run the full module:
 
    ```
-
    python -m src.main [Country Name]
-
    ```
 
    Or run individual modules:
 
    ```
-
    python -m src.heat.heat [Country Name]
    python -m src.flood.flood [Country Name]
-
    ```
