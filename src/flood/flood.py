@@ -5,11 +5,20 @@ from .utils import generate_and_export_training_data as make_training_data
 from .utils import predict
 from .utils import process_all_flood_data as train_and_evaluate
 
-from google.cloud.storage import Bucket
 
-from src.utils.utils import (
-    initialize_storage_client,
-)
+import ee
+from dotenv import load_dotenv
+from google.cloud import storage
+
+
+load_dotenv()
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+GOOGLE_CLOUD_BUCKET = os.getenv("GOOGLE_CLOUD_BUCKET")
+
+
+ee.Initialize(project=GOOGLE_CLOUD_PROJECT)
+storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
+bucket = storage_client.bucket(GOOGLE_CLOUD_BUCKET)
 
 
 def main(place_name: str) -> None:
@@ -19,19 +28,6 @@ def main(place_name: str) -> None:
     Args:
         place_name (str): The name of the place to generate flood hazard predictions for.
     """
-
-    # Preparing arguments for the generic predict function
-    GOOGLE_CLOUD_PROJECT: str | None = os.getenv("GOOGLE_CLOUD_PROJECT")
-    GOOGLE_CLOUD_BUCKET: str | None = os.getenv("GOOGLE_CLOUD_BUCKET")
-
-    if GOOGLE_CLOUD_PROJECT is None or GOOGLE_CLOUD_BUCKET is None:
-        raise ValueError(
-            "Google Cloud project or bucket environment variable is not set."
-        )
-
-    bucket: Bucket = initialize_storage_client(
-        GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET
-    )
 
     make_training_data()
     train_and_evaluate(bucket)

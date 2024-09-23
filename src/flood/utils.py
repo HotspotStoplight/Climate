@@ -28,7 +28,6 @@ from src.utils.utils import (
     classify_image,
     data_exists,
     export_predictions,
-    initialize_storage_client,
     monitor_tasks,
     append_model_tracking_info_to_csv,
 )
@@ -37,7 +36,10 @@ load_dotenv()
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
 GOOGLE_CLOUD_BUCKET = os.getenv("GOOGLE_CLOUD_BUCKET")
 
+# Initialize Earth Engine and Google Cloud Storage
 ee.Initialize(project=GOOGLE_CLOUD_PROJECT)
+storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
+bucket = storage_client.bucket(GOOGLE_CLOUD_BUCKET)
 
 samples_per_flood_class = 50000
 
@@ -336,7 +338,7 @@ def generate_and_export_training_data():
         base_directory = f"{FLOOD_INPUTS_PATH}{snake_case_place_name}/"
 
         # Check if flood training data already exists
-        if data_exists(GOOGLE_CLOUD_BUCKET, f"{base_directory}flood_training_data_"):
+        if data_exists(f"{base_directory}flood_training_data_"):
             print(f"Flood training data already exists for {country}. Skipping...")
             continue
 
@@ -353,9 +355,6 @@ def generate_and_export_training_data():
             for start, end in date_pairs
         ]
 
-        # Initialize Google Cloud Storage client and create the new directory
-        storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
-        bucket = storage_client.bucket(GOOGLE_CLOUD_BUCKET)
         blob = bucket.blob(base_directory)
         blob.upload_from_string(
             "", content_type="application/x-www-form-urlencoded;charset=UTF-8"
@@ -767,7 +766,7 @@ def process_all_flood_data(bucket: storage.Bucket) -> None:
         snake_case_place_name = country.replace(" ", "_").lower()
         directory_name = f"{FLOOD_INPUTS_PATH}{snake_case_place_name}/"
 
-        if not data_exists(GOOGLE_CLOUD_BUCKET, directory_name):
+        if not data_exists(directory_name):
             print(f"No training data found for {country}. Skipping...")
             continue
 
@@ -788,6 +787,8 @@ def process_all_flood_data(bucket: storage.Bucket) -> None:
         return
 
     print("Training and assessing model on combined data...")
+
+    bbox = get_area_of_interest(TRAINING_DATA_COUNTRIES)
 
     # Train and evaluate classifier
     prob_classifier, test_accuracy, validation_accuracy = train_and_evaluate_classifier(
@@ -957,7 +958,7 @@ def predict(place_name: str) -> None:
     base_directory: str = f"{FLOOD_OUTPUTS_PATH}{snake_case_place_name}/"
     predicted_image_filename: str = f"predicted_flood_risk_{snake_case_place_name}"
 
-    if data_exists(GOOGLE_CLOUD_BUCKET, f"{base_directory}{predicted_image_filename}"):
+    if data_exists(f"{base_directory}{predicted_image_filename}"):
         print(
             f"Flood risk predictions data already exists for {place_name}. Skipping prediction."
         )
@@ -970,7 +971,6 @@ def predict(place_name: str) -> None:
         image_to_classify, FLOOD_INPUT_PROPERTIES, FLOOD_MODEL_ASSET_ID
     )
 
-    bucket = initialize_storage_client(GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET)
     task = export_predictions(
         classified_image, "flood", place_name, bucket, base_directory, FLOOD_SCALE
     )

@@ -19,7 +19,6 @@ from src.utils.pygeoboundaries.main import get_area_of_interest
 from src.utils.utils import (
     data_exists,
     export_model_as_ee_asset,
-    initialize_storage_client,
     list_and_check_gcs_files,
     make_snake_case,
     monitor_tasks,
@@ -31,6 +30,7 @@ from src.utils.utils import (
 from typing import Dict, Any
 from google.cloud import storage
 
+
 # Load environment variables
 load_dotenv()
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -38,7 +38,8 @@ GOOGLE_CLOUD_BUCKET = os.getenv("GOOGLE_CLOUD_BUCKET")
 
 # Initialize Earth Engine and Google Cloud Storage
 ee.Initialize(project=GOOGLE_CLOUD_PROJECT)
-bucket = initialize_storage_client(GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_BUCKET)
+storage_client = storage.Client(project=GOOGLE_CLOUD_PROJECT)
+bucket = storage_client.bucket(GOOGLE_CLOUD_BUCKET)
 
 
 # Utility functions
@@ -131,7 +132,7 @@ def export_ndvi_min_max(
     year, bbox, scale, snake_case_place_name, file_prefix="ndvi_min_max"
 ):
     file_path_prefix = f"{HEAT_INPUTS_PATH}{snake_case_place_name}/{file_prefix}_{year}"
-    if data_exists(GOOGLE_CLOUD_BUCKET, file_path_prefix):
+    if data_exists(file_path_prefix):
         print(f"File for {year} already exists. Skipping export.")
         return None
 
@@ -184,7 +185,7 @@ def process_heat_data(place_name):
     bbox = get_area_of_interest(place_name)
     directory_name = f"{HEAT_INPUTS_PATH}{snake_case_place_name}/"
 
-    if data_exists(GOOGLE_CLOUD_BUCKET, directory_name):
+    if data_exists(directory_name):
         print(f"Training data for {place_name} already exists. Skipping...")
         return
     else:
@@ -245,7 +246,7 @@ def generate_heat_tif_list(training_data_countries):
         snake_case_place_name = make_snake_case(country)
         directory_name = f"{HEAT_INPUTS_PATH}{snake_case_place_name}/"
 
-        if data_exists(GOOGLE_CLOUD_BUCKET, directory_name):
+        if data_exists(directory_name):
             print(f"Data for {country} exists. Collecting URIs...")
             for year in range(datetime.now().year - 6, datetime.now().year - 1):
                 prefix = f"{directory_name}{year}/heat_{year}"
