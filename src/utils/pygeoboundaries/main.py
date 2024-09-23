@@ -143,9 +143,7 @@ def get_adm(
     ]
     feature_collection = {
         "type": "FeatureCollection",
-        "features": [
-            feature["features"][0] for feature in geojson_features
-        ],
+        "features": [feature["features"][0] for feature in geojson_features],
     }
     return feature_collection
 
