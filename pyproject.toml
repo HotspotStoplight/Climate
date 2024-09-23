@@ -1,3 +1,14 @@
+[tool.pylint.'MESSAGES CONTROL']
+disable = ["all"]
+enable = ["duplicate-code"]
+
+
+[tool.vulture]
+exclude = ["scratch/"]
+make_whitelist = true
+# min_confidence = 80
+sort_by_size = true
+
 [tool.mypy]
 ignore_missing_imports = true
 exclude = 'scratch/.*'

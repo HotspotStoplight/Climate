@@ -32,6 +32,9 @@ rasterio = "==1.3.9"
 isort = "==5.13.2"
 mypy = "*"
 python-dotenv = "*"
+vulture = "*"
+pylint = "*"
+pylint-json2html = "*"
 
 [requires]
 python_version = "3.11"

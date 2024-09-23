@@ -7,9 +7,8 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  lint-type-check-docker-build:
+  lint:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -17,27 +16,54 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11" # Set the desired Python version
+          python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install dependencies for linting
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy
+          pip install ruff pylint
 
       - name: Run Ruff linter
         run: |
           ruff check --fix
         continue-on-error: true
 
-      - name: Run Ruff formatter
+      - name: Run Pylint duplicate code check
         run: |
-          ruff format
+          pylint --disable=all --enable=duplicate-code .
         continue-on-error: true
+
+      - name: Run Vulture dead code check
+        uses: gtkacz/vulture-action@1.0.0
+        with:
+          args: '--min-confidence 80 --exclude "scratch/" --verbose'
+
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies for type checking
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy
 
       - name: Run mypy type checks
         run: |
           mypy .
         continue-on-error: true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
