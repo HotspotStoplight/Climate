@@ -1,5 +1,6 @@
 [tool.pylint]
 ignore = ["scratch/"]
+output-format = "colorized,parseable"
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = ["all"]
