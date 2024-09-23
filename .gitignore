@@ -6,6 +6,8 @@ http_cache.sqlite
 
 # ignore credentials
 credentials/ 
+*.json
+!credentials/service-account-key.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
