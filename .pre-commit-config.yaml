@@ -32,3 +32,15 @@ repos:
         entry: bash -c 'pipenv check --bare --quiet || (echo "Python dependencies check failed" && exit 1)'
         language: system
         files: ^Pipfile$
+
+      # Radon checks for maintainability and difficulty
+      - id: radon-check
+        name: Radon Maintainability and Halstead Checks
+        entry: |
+          bash -c '
+          radon mi -s {} --exclude "scratch" | grep -E " - [BCDEF] \(" && echo "Radon MI grade below A detected!" && exit 1 || echo "All MI grades are A."
+          radon hal {} --exclude "scratch" -s | awk "/effort/ { if (\$3 > 2000) print FILENAME \": High Halstead effort:\" \$3 }"
+          radon hal {} --exclude "scratch" -s | awk "/difficulty/ { if (\$3 > 10) print FILENAME \": High Halstead difficulty:\" \$3 }"'
+        language: system
+        files: \.py$
+        exclude: ^scratch/

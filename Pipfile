@@ -35,6 +35,7 @@ python-dotenv = "*"
 vulture = "*"
 pylint = "*"
 pylint-json2html = "*"
+radon = "*"
 
 [requires]
 python_version = "3.11"
